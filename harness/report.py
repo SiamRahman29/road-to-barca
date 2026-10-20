@@ -28,19 +28,19 @@ def f(value, width=6, digits=3):
 
 
 def table(rows):
-    header = ("{:<30} {:>6} {:>15} {:>6} {:>7} {:>9} {:>5} {:>6} {:>6}  {}".format(
+    header = ("{:<38} {:>6} {:>15} {:>6} {:>7} {:>9} {:>5} {:>6} {:>6}  {}".format(
         "exp_id", "spell", "public 90% CI", "macro", "pub n", "full n", "dur", "tag",
         "rstrt", "description"))
     print(header)
     print("-" * len(header))
     for row in rows:
         if row["status"] != "ok":
-            print("{:<30} {}  {}".format(row["exp_id"][:30], row["status"].upper(),
+            print("{:<38} {}  {}".format(row["exp_id"][:38], row["status"].upper(),
                                          row["notes"]))
             continue
         flag = "*" if row["tuned_on_public"] else " "
-        print("{:<29}{} {} [{}, {}] {} {:>3}/{:<3} {:>9} {} {} {}  {}".format(
-            row["exp_id"][:29], flag, f(row["pub_spell"], 6, 4), f(row["pub_spell_lo"], 5),
+        print("{:<37}{} {} [{}, {}] {} {:>3}/{:<3} {:>9} {} {} {}  {}".format(
+            row["exp_id"][:37], flag, f(row["pub_spell"], 6, 4), f(row["pub_spell_lo"], 5),
             f(row["pub_spell_hi"], 5), f(row["pub_macro"]), row["pub_n_spells"],
             row["pub_gt_spells"], row["full_n_spells"], f(row["full_mean_dur_s"], 5, 1),
             f(row["tag_agree"]), f(row["restart_hit"]), row["description"][:60]))
