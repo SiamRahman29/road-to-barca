@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./data/**)",
+      "Read(./shared/cache/**)",
+      "Read(./shared/derived/**)",
+      "Read(./shared/runs/**/submission.csv)",
+      "Edit(./evaluation/**)",
+      "Edit(./games.py)",
+      "Edit(./starter/**)"
+    ]
+  }
+}
