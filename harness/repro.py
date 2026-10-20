@@ -1,14 +1,20 @@
 """Prove a logged run regenerates byte-for-byte from its commit, in a fresh process.
 
     python -m harness.repro e007
+    python -m harness.repro e007 --cold   # also with an empty shared/: no cache, no derived
 
 Checks the commit out into a temporary worktree, reruns the experiment there with the logged
 params, and compares the CSV's sha256 to the logged one. This is the competition's reproduction
 rule tested before the organisers test it: a different hash means something in the pipeline
 depends on more than the commit and the data (set ordering, an unseeded RNG, a cache, the clock).
+
+--cold is the organisers' situation: a fresh clone plus the data bundle. The rerun gets its own empty
+shared/, so the tracking is re-parsed from the raw file and nothing in shared/derived/ is visible. A
+run that needs a GPU artifact fails here until that stage has its own script in the repo.
 """
 
 import argparse
+import os
 import subprocess
 import sys
 import tempfile
@@ -19,6 +25,8 @@ from harness import log, paths
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("exp_id")
+    parser.add_argument("--cold", action="store_true",
+                        help="rerun with an empty shared/ instead of the warm cache")
     args = parser.parse_args()
 
     row = log.find(args.exp_id)
@@ -27,20 +35,24 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="repro-") as tmp:
         worktree = tmp + "/wt"
+        env = dict(os.environ)
+        if args.cold:
+            env["MTAH_SHARED_DIR"] = tmp + "/shared"
         subprocess.run(["git", "worktree", "add", "--detach", "--quiet", worktree,
                         row["git_commit"]], cwd=paths.CODE_ROOT, check=True)
         try:
             out = subprocess.run(
                 [sys.executable, "-m", "harness.run", row["experiment"], "--scratch",
                  "--sha-only", "--params-json", row["params"]],
-                cwd=worktree, capture_output=True, text=True)
+                cwd=worktree, env=env, capture_output=True, text=True)
         finally:
             subprocess.run(["git", "worktree", "remove", "--force", worktree],
                            cwd=paths.CODE_ROOT, check=True)
 
     got = out.stdout.strip().splitlines()[-1] if out.stdout.strip() else out.stderr.strip()
     if got == row["sha256"]:
-        print("REPRODUCED  {}  sha256 {}".format(row["exp_id"], got[:16]))
+        print("REPRODUCED  {}  sha256 {}{}".format(row["exp_id"], got[:16],
+                                                   "  (cold)" if args.cold else ""))
         return
     print("MISMATCH    {}\n  logged {}\n  rerun  {}".format(row["exp_id"], row["sha256"], got))
     sys.exit(1)

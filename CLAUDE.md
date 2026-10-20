@@ -17,7 +17,7 @@ The data terms forbid making the videos, datasets, "or any extracts thereof" ava
 - Never commit the data or derived per-frame arrays. The submission repo is public.
 
 ## The harness — frozen after review
-`harness/` wraps the organisers' scorer; it does not re-implement it. `evaluation/`, `games.py` and `starter/` are the organisers' code and are never edited.
+`harness/` wraps the organisers' scorer; it does not re-implement it. Frozen at tag `harness-v1`; `.claude/settings.json` denies edits to it. Changing it is the user's call, and a change re-runs `harness.selftest`. `evaluation/`, `games.py` and `starter/` are the organisers' code and are never edited.
 
 | command | what it does |
 |---|---|
@@ -28,6 +28,7 @@ The data terms forbid making the videos, datasets, "or any extracts thereof" ava
 | `uv run python -m harness.report --compare eA eB` | where two runs disagree, as aggregates |
 | `uv run python -m harness.report --note eNNN "..."` | attach what you learned to a run |
 | `uv run python -m harness.repro eNNN` | regenerate a run from its commit in a fresh worktree and compare sha256 |
+| `... harness.repro eNNN --cold` | the same with an empty `shared/` (no cache, no derived): the organisers' fresh-clone situation |
 | `uv run python -m harness.selftest` | harness regenerates the organisers' baselines byte for byte and matches their published scores |
 
 An experiment is a module in `src/experiments/` with `PARAMS`, `TUNED_ON_PUBLIC` and `predict(params) -> 199319 labels`. Copy `baseline_nearest.py`. Parsed tracking comes from `src/data.py:tracking()` (cached).
@@ -42,7 +43,7 @@ An experiment is a module in `src/experiments/` with `PARAMS`, `TUNED_ON_PUBLIC`
 - One idea per branch; parallel ideas in separate git worktrees. Data, cache and log are shared through `harness/paths.py`.
 - Commit, then run. Log every run, including failures. Set `--parent` so the log reads as a tree, and add a note with what was learned.
 - Agents explore and log; **the user decides what merges to main**, and picks and submits the final file.
-- Runs must be deterministic: `harness.repro` before anything is a submission candidate.
+- Runs must be deterministic: `harness.repro --cold` passes before anything is a submission candidate.
 
 ## Remote GPU (Kaggle, Colab, others)
 - Not set up yet. Uploading match data to any GPU service needs the user's go-ahead after checking the data terms; never upload it on your own.

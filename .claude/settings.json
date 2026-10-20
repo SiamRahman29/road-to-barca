@@ -7,7 +7,9 @@
       "Read(./shared/runs/**/submission.csv)",
       "Edit(./evaluation/**)",
       "Edit(./games.py)",
-      "Edit(./starter/**)"
+      "Edit(./starter/**)",
+      "Edit(./harness/**)",
+      "Write(./harness/**)"
     ]
   }
 }
