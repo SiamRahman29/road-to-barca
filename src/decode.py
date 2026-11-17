@@ -1,13 +1,4 @@
-"""The joint H / A / D decoder, kept apart from the hand-label pipeline so the label-free path
-(src/dfl_only.py) imports nothing that reads hand labels.
-
-Viterbi over H, A, D per row with emissions
-
-    D: log P(dead)        H: log(1 - P(dead)) + log P(home)        A: likewise with P(away)
-
-each scaled by 1/2, a cost `cd` for every switch between live and dead and `ct` for every switch
-between the teams.
-"""
+"""The joint H / A / D decoder: a three-state Viterbi on dead and team log-odds."""
 
 import numpy as np
 

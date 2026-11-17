@@ -17,22 +17,10 @@ import numpy as np
 
 FPS = 25
 
-# Bernoulli columns hold 0/1 (NaN if unknown); the rest are real. NAMES is the tactical set ("rich"
-# in ld_sweep); BROADCAST columns come from the aligned TV tracking (src/broadcast.py) and are only
-# used when asked for by name. ALL is the column order of the arrays.
+# "seen", "out", "stationary" hold 0/1 (NaN if unknown); the rest are real. NAMES is the column order.
 REAL = ("ball_speed", "player_speed", "moving_share", "unseen_time", "line_dist",
         "outward_speed", "crowd", "n_players", "seen_window", "speed_window", "spot_dist")
 NAMES = ("seen", "out", "stationary") + REAL
-BROADCAST = ("tv_players", "tv_seen", "tv_few", "seen_any")
-# On/off versions of tactical signals at fixed football thresholds (the HMM fits bits better than
-# skewed or bimodal reals).
-BITS = ("slow_players", "unseen_2s", "near_line", "tv_cut")
-# Audio of the tactical video (src/audio.py): 3-4 kHz tonality, robust z, averaged over +/- 1 s.
-AUDIO = ("audio_tonal",)
-ALL = NAMES + BROADCAST + BITS + AUDIO
-BERNOULLI = ("seen", "out", "stationary", "tv_seen", "tv_few", "seen_any") + BITS
-BASE = ("seen", "out", "ball_speed", "player_speed")  # the columns live_dead_hmm uses
-
 OUT_MARGIN_M = 1.0       # ball this far outside a line counts as out of play
 SPEED_FLOOR = 0.1        # m/s, keeps the logs finite
 BALL_LAG = 2             # frames either side for the ball speed
@@ -47,12 +35,6 @@ OUTWARD_CLIP = 30.0
 SPOT_CLIP = 20.0
 GOAL_AREA = (5.5, 18.32 / 2)  # depth from the goal line, half-width, metres
 PENALTY_SPOT_M = 11.0
-TV_FEW_PLAYERS = 8      # fewer tracked by the TV: a replay, close-up or crowd shot, not play
-SLOW_PLAYERS_MS = 1.0   # mean player speed below this: walking, play has stopped
-UNSEEN_LONG_S = 2.0
-NEAR_LINE_M = 2.0
-
-
 def _quiet(function, *args, **kwargs):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -147,18 +129,3 @@ def frame_features(t, first, last):
         "spot_dist": np.minimum(_spot_distance(carried_x, carried_y, length, width), SPOT_CLIP),
     }
     return np.column_stack([columns[name] for name in NAMES])
-
-
-def pool(features, step):
-    """Block means over `step` frames; Bernoulli columns become majority (seen, stationary) or any."""
-    n_blocks = -(-len(features) // step)
-    padded = np.full((n_blocks * step, features.shape[1]), np.nan)
-    padded[:len(features)] = features
-    pooled = _quiet(np.nanmean, padded.reshape(n_blocks, step, -1), axis=1)
-    for name in BERNOULLI:
-        k = ALL.index(name)
-        known = ~np.isnan(pooled[:, k])
-        threshold = 0.0 if name == "out" else 0.5
-        pooled[known, k] = (pooled[known, k] > threshold) if name == "out" \
-            else (pooled[known, k] >= threshold)
-    return pooled

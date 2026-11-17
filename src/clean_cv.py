@@ -1,5 +1,5 @@
 """Rule-safe choice of the dead-model drop group and decoder costs, on outside data only
-(notes/final-queue-2026-11-13.md, protocol P1).
+(the rule is written below, before any result).
 
     uv run python -m src.clean_cv --seedsets 01,23,45
 
@@ -9,7 +9,7 @@ in three renderings of its stoppages:
     plain   DFL as it is: the ball frozen for the whole stoppage, teleported at the kick
     hide    the dead ball unseen                        (src/external/view.py)
     taker   the dead ball carried by the restart taker  (src/external/view.py)
-Our tracker never shows a frozen ball (notes/ld-match.md, label-free), so the transfer score is the
+An automatic tracker never shows a frozen ball, so the transfer score is the
 mean of hide and taker; plain is reported. Held-out log-odds are saved for the decoder studies.
 Prints aggregates only (outside data).
 """

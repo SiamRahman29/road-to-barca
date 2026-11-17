@@ -26,7 +26,6 @@ from src.decode import viterbi3
 from src.team_swap import swapped
 
 STEP = 5                      # frames between rows (0.2 s); labels are repeated to 25 fps
-MIN_FRAMES = 37               # controlled possession: runs under 1.5 s join the team before them
 # The highest ball height our provider reports on graded frames (7.27 m, label-free), rounded up:
 # the rule-safe replacement for common.AIR_M in tags "h7.3...raw".
 CEILING_M = 7.3
@@ -63,7 +62,7 @@ def free_profile():
 
 
 def match_rows(match_id, seed, tag="free"):
-    """Degraded features (every STEP-th frame inside play) and controlled labels for one match."""
+    """Degraded features (every STEP-th frame inside play) and DFL labels for one match."""
     os.makedirs(CACHE, exist_ok=True)
     path = os.path.join(CACHE, "{}_s{}_{}.npz".format(match_id, seed, tag))
     if not os.path.exists(path):
@@ -77,7 +76,7 @@ def match_rows(match_id, seed, tag="free"):
         src = m
         if hv.group(2):
             from src.external import view
-            src = view.view(m, ball=hv.group(2), restart="kick")
+            src = view.view(m, ball=hv.group(2))
             src["ball"] = src["ball"].copy()
             src["ball"][:, 2] = m["ball"][:, 2]     # view drops the height; the ceiling needs it
         d = common.degrade(src, free_profile(), seed=seed * 7 + idsse.MATCHES.index(match_id),
@@ -85,7 +84,7 @@ def match_rows(match_id, seed, tag="free"):
         m = src
         C, names = common.common_design(d, m["halves"])
         # The DFL labels as they are. CHALLENGE.md: the ground truth is mechanical and "nothing is
-        # smoothed ... afterwards", and the public truth keeps sub-second spells.
+        # smoothed ... afterwards".
         label = m["label"].copy()
         idx = np.concatenate([np.arange(f, l + 1, STEP) for f, l in m["halves"]])
         np.savez(path, C=C[idx], idx=idx, y=label[idx], names=np.array(names), label=label,
@@ -127,8 +126,8 @@ BIG_DEAD_HP = dict(DEAD_HP, max_leaf_nodes=63, max_iter=600, min_samples_leaf=10
 BIG_TEAM_HP = dict(TEAM_HP, max_leaf_nodes=31, max_iter=500, min_samples_leaf=50)
 HPS = {"": (DEAD_HP, TEAM_HP), "big": (BIG_DEAD_HP, BIG_TEAM_HP)}
 
-# Dead-model columns that the clean outside ball makes trivially perfect (a dead ball is frozen) but our
-# tracker's ball is not (public window: ball_speed AUC dead-vs-live 0.31 ours, 0.01 DFL).
+# Dead-model columns that the clean outside ball makes trivially perfect (DFL freezes a dead ball in place
+# and teleports it at the restart, src/external/view.py) but an automatic tracker's ball does not.
 DROP_A = ("ball_speed", "ld_ball_speed", "ball_acc", "ball_vx", "ld_stationary", "ld_outward_speed")
 DROP_B = DROP_A + ("rs_", "since_touch", "until_touch", "last_event", "next_event", "n_touch", "n_carry",
                    "since_carry", "until_carry")
@@ -279,7 +278,7 @@ def main():
     mlflow.set_tracking_uri("sqlite:///" + os.path.join(WORK, "mlflow.db"))
     mlflow.set_experiment("dfl_only")
     with mlflow.start_run(run_name=a.name):
-        mlflow.log_params({"seeds": a.seeds, "tag": a.tag, "dead_drop": a.drop, "step": STEP, "min_frames": MIN_FRAMES,
+        mlflow.log_params({"seeds": a.seeds, "tag": a.tag, "dead_drop": a.drop, "step": STEP,
                            **{"dead_" + k: v for k, v in dead_hp.items()},
                            **{"team_" + k: v for k, v in team_hp.items()}, "tdrop": a.tdrop})
         res, per_match, names = lomo(seeds, cds, cts, a.tag, dead_hp, team_hp, drop=a.drop, tdrop=a.tdrop)

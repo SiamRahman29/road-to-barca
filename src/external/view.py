@@ -2,9 +2,9 @@
 ours never shows. Structure only; losing ball and players the way our tracker does is
 src/external/common.degrade, a separate step.
 
-    v = view(m, ball="taker", restart="kick")    m from src.external.idsse.match
+    v = view(m, ball="taker")    m from src.external.idsse.match
 
-What differs in kind (python -m src.external.parity, python -m src.external.dfl_status):
+What differs in kind :
 - ball column 2: DFL height on every frame; ours height on 8% of seen frames. Dropped here (the
   live/dead features never read it).
 - dead ball: DFL freezes the ball's coordinates for the whole stoppage (99.5% of dead frames,
@@ -16,11 +16,7 @@ What differs in kind (python -m src.external.parity, python -m src.external.dfl_
       "taker"   the restart taker's position, the player nearest the ball at the first live
                 frame: the ball is fetched, carried and placed by the player who plays it
 - restart convention: DFL's flag turns alive at the kick (the ball moving > 2 m/s at the flip in
-  99.7% of restarts). `restart` chooses the label:
-      "kick"    DFL as it is
-      "touch"   dead until the next touch after the kick (a player within TOUCH_M, at least
-                MIN_FLIGHT frames after the ball moved, capped at CAP_S), the reading of the
-                public ground truth's corner and goal kick in notes/ld-match.md
+  99.7% of restarts). The labels are kept as they are.
 """
 
 import numpy as np
@@ -51,8 +47,8 @@ def dead_spells(label):
     return [(a, b) for a, b in zip(e[::2], e[1::2]) if b < len(label) and label[b] in (pm.H, pm.A)]
 
 
-def view(m, ball="taker", restart="kick"):
-    assert ball in BALLS and restart in RESTARTS
+def view(m, ball="taker"):
+    assert ball in BALLS
     length, width = m["pitch"]
     label = m["label"].copy()
     b = m["ball"].copy()
@@ -70,26 +66,6 @@ def view(m, ball="taker", restart="kick"):
                 continue
             k = int(np.nanargmin(d))
             b[start:stop, :2] = players[start:stop, k, :2]
-    if restart == "touch":
-        xy = m["ball"][:, :2] * (length, width)
-        v = _speed(xy)
-        p = players[:, :, :2].astype(np.float64) * (length, width)
-        cap = int(CAP_S * FPS)
-        for _, stop in spells:
-            hi = min(len(label), stop + cap)
-            moving = np.flatnonzero(v[stop:hi] > MOVE_MS)
-            if not len(moving):
-                continue
-            j0 = stop + moving[0] + MIN_FLIGHT
-            if j0 >= hi:
-                continue
-            with np.errstate(all="ignore"):
-                near = np.nanmin(np.hypot(p[j0:hi, :, 0] - xy[j0:hi, None, 0],
-                                          p[j0:hi, :, 1] - xy[j0:hi, None, 1]), axis=1)
-            touch = np.flatnonzero(near < TOUCH_M)
-            end = j0 + touch[0] if len(touch) else hi
-            live = (label[stop:end] == pm.H) | (label[stop:end] == pm.A)
-            label[stop:end][live] = pm.D
     out = dict(m)
     out["ball"], out["label"] = b, label
     return out

@@ -125,27 +125,6 @@ def _build(match_id):
             "label": label, "halves": np.array(halves)}
 
 
-def controlled(label, min_frames):
-    """DFL possession turned towards controlled possession: inside play, a team's run shorter than
-    min_frames goes to the team before it (or after it, at the start of play), shortest first."""
-    out = label.copy()
-    while True:
-        e = np.flatnonzero(np.diff(out)) + 1
-        starts, ends = np.concatenate(([0], e)), np.concatenate((e, [len(out)]))
-        codes = out[starts]
-        team = (codes == pm.H) | (codes == pm.A)
-        short = np.flatnonzero(team & (ends - starts < min_frames))
-        # Only runs with a team neighbour on at least one side can be merged.
-        fixable = [k for k in short if (k > 0 and team[k - 1]) or (k + 1 < len(codes) and team[k + 1])]
-        if not fixable:
-            return out
-        k = min(fixable, key=lambda j: ends[j] - starts[j])
-        if k > 0 and team[k - 1]:
-            out[starts[k]:ends[k]] = codes[k - 1]
-        else:
-            out[starts[k]:ends[k]] = codes[k + 1]
-
-
 def match(match_id):
     os.makedirs(CACHE, exist_ok=True)
     path = os.path.join(CACHE, "idsse_{}.npz".format(match_id))
