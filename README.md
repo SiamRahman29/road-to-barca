@@ -1,5 +1,17 @@
 # More than a Hack 2027 — Phase 1: Ball Possession
 
+> **Team Scio's submission.** This fork adds the pipeline that produced `Scio.csv`. The method,
+> the assets used and dropped, the possession rules and the limitations are in **[Scio.md](Scio.md)**.
+> To regenerate the file exactly, with the organisers' data bundle unpacked in `data/`:
+>
+> ```bash
+> uv sync
+> uv run python -m src.submit     # writes Scio.csv, validates it, checks its sha256
+> ```
+>
+> The first run downloads seven outside matches (IDSSE / DFL, CC BY 4.0, about 2.5 GB, no account).
+> Everything below this box is the organisers' original README.
+
 **Organised by [Metrica Sports](https://metrica-sports.com), [FC Barcelona](https://www.fcbarcelona.com)
 and the [Mobile World Capital Barcelona](https://www.mwcbarcelona.com)**, at the Talent Arena in Barcelona.
 
