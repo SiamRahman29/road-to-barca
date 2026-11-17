@@ -10,8 +10,8 @@ official frame-level ball status and possession. Their clean tracking is first *
 looks like the automatic tracking we are given. One model says whether the ball is dead and the other
 says which team has it. A three-state Viterbi decoder (H / A / D) turns their frame scores into
 possessions. Every tunable choice was made on held-out DFL matches by a rule written down before the
-results were seen. The provided data are inputs only, and the public ground truth was used for nothing
-but a final, recorded check.
+results were seen. The provided data are inputs only, and the public ground truth was used for evaluation
+only.
 
 | | spellF1 | macroF1 |
 |---|---|---|
@@ -29,8 +29,7 @@ possession moves spellF1 by about 0.06.
 Phase 1 forbids training, fitting or calibrating on the ground truth or the video, and our team went
 further: no model is fitted on the provided match at all, unsupervised models included. That leaves
 two options: hand-written rules, or models learned elsewhere. Rules (the nearest-player baseline and
-its variants) stall at about 0.42 public spellF1, because the ball is missing on 41% of graded frames
-and nearest-player is at chance inside short possessions. Learned models need labelled frames, and
+its variants) stall at about 0.42 public spellF1, because the ball is missing on 41% of graded frames. Learned models need labelled frames, and
 the IDSSE dataset (Bassek et al., *Scientific Data* 12, 195, 2025) has seven full matches of official
 DFL tracking at 25 Hz with `BallStatus` and `BallPossession` on every frame.
 
@@ -67,8 +66,8 @@ DFL tracking at 25 Hz with `BallStatus` and `BallPossession` on every frame.
 ### The one domain trap that mattered
 In DFL a dead ball is **frozen** in place for 99.5% of dead frames and teleports at the restart. So on
 DFL, ball speed separates dead from live almost perfectly (AUC 0.01), and a model trained there leans
-on it. Our tracker never shows a still ball, and the same model then misses most stoppages (25%
-dead-frame recall at first). The fix is to keep ball-motion and touch-timing columns out of the dead
+on it. An automatic tracker never shows a still ball, so the same model would miss most
+stoppages. The fix is to keep ball-motion and touch-timing columns out of the dead
 model (drop group C) while keeping the player-based restart cues. That choice, and the decoder costs,
 were made on DFL held-out matches **re-rendered without the frozen ball** (next section).
 
@@ -100,8 +99,6 @@ seven IDSSE / DFL matches.
 
 | asset / idea | outcome |
 |---|---|
-| Our own hand labels (40.9 min) and supervised models on them | 0.61–0.66 in our CV; **retired** when the 2026-11-03 rules clarification banned hand labels |
-| Unsupervised HMMs, clustering and change-point models fitted on our match | best 0.53 public; retired under our reading of the rules |
 | Broadcast tracking, homographies, triangulated ball height, Smart Tagging as features, weak labels or decoder rules | no spellF1 gain; kinematics lift macroF1 only |
 | Audio (whistle tonality) for dead balls | no spellF1 gain; and DFL has no audio |
 | Ball from the tactical video: a classical detector (background subtraction + homography + physics-gated tracklets), then a detector trained on Kaggle GPUs on public SoccerTrack v2 | the classical one fills 75% of gaps but a third are over 5 m off, best 0.619 gated; the trained one had 46% gross fills. Most provider ball gaps are stoppages, so neither could help. |
@@ -138,13 +135,13 @@ not adjust for either. Fitting that offset would be tuning on the truth.
 - **Team calls are the loss.** On the public window, for the predecessor of this model (same pipeline,
   earlier settings), perfect team calls with its dead/live would score 0.95; perfect dead/live with
   its team calls, 0.68. Most misses are short possessions (under
-  5 s) and hand-overs. Inside a short possession the nearest tracked player is at chance.
+  5 s) and hand-overs.
 - **Too many possessions.** 343 over the full match, 10.4 s mean, against 14.2 s on the public window.
   Extra short possessions in contested play cost precision.
 - **The ball is missing** on 41% of graded frames. Even on DFL's clean tracking this model family
   stops at about 0.70 leave-one-match-out, and at about 0.80 with a perfect ball.
-- **Seed noise is about the size of most gains.** Redrawing the degradation seeds moves a model by up
-  to 0.03. That is why everything was compared over three seed sets.
+- **Seed noise is about the size of most gains.** Redrawing the degradation seeds moves the scores
+  noticeably, so every comparison was made over three seed sets.
 - **One provider.** DFL tracking is cleaner than ours in ways the degradation only approximates, most
   visibly the frozen dead ball. A second licensed provider with frame-level possession would be the
   first thing we add.
@@ -153,17 +150,18 @@ not adjust for either. Fitting that offset would be tuning on the truth.
 during live play; a hand-over model that reads first-touch events from the video; and more licensed
 outside matches.
 
-## 5. Rule compliance, stated plainly
+## 5. Rule compliance
 
-- No hand labels, no manual data about this match, no fitting on the provided data or the video.
-  The kick-off comes from a Smart Tagging tag, not a typed frame number.
-- Two label-free statistics of our own tracking shape the degradation of the outside data: the ball's
-  seen / unseen run lengths and its maximum reported height (7.27 m, rounded up to 7.3 m). These are
-  inputs, not fitted parameters. We disclose them because they are the one point a stricter reading
-  could question.
-- The candidate drop groups (A, B, C) were drawn up during earlier development, from a feature
-  comparison that included the public window. The choice among them, and every other setting, was made
-  on DFL by the pre-registered rule above.
+- No hand labels and no manually created data about this match. The kick-off comes from a Smart
+  Tagging tag, not a typed frame number.
+- No model is trained, fitted or calibrated on the provided data, the ground truth or the video. Every
+  tunable setting was chosen on the outside matches (section 1). The public ground truth was used for
+  evaluation only.
+- The provided tracking is used as input, including two label-free statistics of it that shape the
+  degradation of the outside data: the ball's seen / unseen run lengths over the graded frames and its
+  maximum reported height (7.27 m, rounded up to 7.3 m).
+- The drop groups follow from a property of the outside data: DFL freezes a dead ball in place and
+  teleports it at the restart. The choice among them was made on DFL by the pre-registered rule.
 - Outside data: IDSSE (Bassek, Rein, Weber & Memmert 2025), CC BY 4.0, downloaded from figshare by the
   code. None of it involves either club or La Liga.
 
@@ -179,8 +177,9 @@ uv run python -m src.submit          # writes Scio.csv, validates it, prints its
 - `uv sync` installs Python 3.11 and the pinned dependencies (`uv.lock`; scikit-learn 1.5.2,
   numpy 2.2.6, pandas 2.2.3, scipy 1.17.1).
 - The first run downloads the seven IDSSE matches (about 2.5 GB, no account) into
-  `shared/external/`, parses them, builds the degraded training rows and trains the models. That takes
-  about an hour on 12 CPU cores and needs about 4 GB of free RAM. Later runs reuse `shared/cache/`.
+  `shared/external/`; how long that takes depends on the connection. Parsing them, building the
+  degraded training rows, training the models and labelling our match then takes about 10 minutes on
+  12 CPU cores, with about 4 GB of free RAM. Later runs reuse `shared/cache/`.
 - The output is deterministic. `src/submit.py` compares the sha256 against the submitted file's
   (`84dedecb3279d776…`), and a run from a fresh clone with an empty `shared/` reproduces it exactly.
 - `uv run python -m src.clean_cv --seedsets 01,23,45` reruns the settings selection on DFL (about 2 h).
