@@ -66,3 +66,6 @@ env/
 # Workspace
 shared/
 .python-version
+
+# The submission file is per-frame labels derived from the match data: never committed
+/Scio.csv
